@@ -1,6 +1,6 @@
 #include <WindowManagement.hpp>
 
-#define GLFW_MINOR_VERSION 6
+#define GLFW_MINOR_VERSION 1
 
 WindowManagement::WindowManagement()
 {
@@ -106,7 +106,7 @@ bool WindowManagement::init(string window_name)
     ImGui::CreateContext();
     ImGui::StyleColorsDark();
     ImGui_ImplGlfw_InitForOpenGL(this->window, true);
-    ImGui_ImplOpenGL3_Init("#version 460");
+    ImGui_ImplOpenGL3_Init("#version 410");
 
     ImGuiIO &io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NoMouse;
@@ -130,8 +130,6 @@ bool WindowManagement::init(string window_name)
 
     this->decay = 1.0f;
 
-    this->cool = false;
-
     this->spatial_partition = true;
 
     this->ball_radius = 150.0f;
@@ -143,8 +141,10 @@ bool WindowManagement::init(string window_name)
     BuildScene::setup_view_volume(vao_view_volume);
 
     BuildScene::setup_texture(texture_wood, "assets/wood.png");
+    BuildScene::setup_texture(texture_ball, "assets/brick.jpg");
+    BuildScene::setup_texture(texture_cube, "assets/container.jpg");
 
-    balls_handler = new BallsHandler();
+    balls_handler = new BallsHandler(this->boundary_size);
 
     return true;
 }
@@ -238,7 +238,7 @@ void WindowManagement::mainloop()
 
         this->check_keyboard_pressing();
 
-        this->balls_handler->move_balls(cool, decay, spatial_partition);
+        this->balls_handler->move_balls(decay, spatial_partition);
 
         imgui();
 
@@ -259,8 +259,7 @@ void WindowManagement::mainloop()
 void WindowManagement::imgui()
 {
     static glm::vec3 ball_position;
-    // static glm::vec3 ball_speed = glm::vec3(0.0f, -10.0f, 0.0f);
-    static vector<float> ball_speed = {0.0f, -10.0f, 0.0f};
+    static vector<float> ball_speed = {0.0f, 0.0f, 0.0f};
     static bool overflow_decay = false;
 
     ImGui_ImplOpenGL3_NewFrame();
@@ -298,7 +297,6 @@ void WindowManagement::imgui()
         }
 
         ImGui::Checkbox("Spatial Partition", &spatial_partition);
-        ImGui::Checkbox("Gravity (beta)", &cool);
         ImGui::Checkbox("Decay Overflow (danger)", &overflow_decay);
 
         ImGui::Text("----------------------------");
@@ -354,6 +352,12 @@ void WindowManagement::render_scene(SCENE scene)
 
     BuildScene::render_boundary(scene, vao_boundary, this->shader_texture, texture_wood, boundary_size);
 
+    this->balls_handler->draw_balls(this->shader_texture, texture_ball
+                                  , this->camera.position, this->camera.yaw, this->camera.pitch
+                                  , this->near_distance, this->far_distance);
+
+    this->balls_handler->draw_cubes(this->shader_texture, texture_cube);
+
     this->shader.use();
 
     shader.set_uniform("projection", projection);
@@ -362,10 +366,6 @@ void WindowManagement::render_scene(SCENE scene)
     camera.use(this->shader, scene);
 
     BuildScene::render_player(scene, vao_player, this->shader, this->camera.position);
-
-    this->balls_handler->draw_balls(this->shader
-                                  , this->camera.position, this->camera.yaw, this->camera.pitch
-                                  , this->near_distance, this->far_distance);
 
     shader.set_uniform("enable_light", false);
     BuildScene::render_view_volume(scene, vao_view_volume, this->shader
@@ -426,6 +426,11 @@ void WindowManagement::keyboard_down(int key)
 
             break;
 
+        case GLFW_KEY_H:
+            this->balls_handler->reset_cubes(this->boundary_size);
+
+            break;
+
         case GLFW_KEY_T:
             this->balls_handler->add_ball(boundary_size);
 
@@ -439,22 +444,24 @@ void WindowManagement::check_keyboard_pressing()
     //     return;
     static float cooldown = 0.0f;
 
+    glm::vec3 front = glm::normalize(glm::vec3(this->camera.direction.x, 0, this->camera.direction.z));
+
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
     {
-        this->camera.position +=  glm::normalize(this->camera.direction) * 20.0f;
+        this->camera.position +=  front * 20.0f;
     }
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
     {
-        this->camera.position += -glm::normalize(this->camera.direction) * 20.0f;
+        this->camera.position += -front * 20.0f;
     }
 
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
     {
-        this->camera.position +=  glm::normalize(glm::cross(this->camera.direction, glm::vec3(0.0f, 1.0f, 0.0f))) * 20.0f;
+        this->camera.position +=  glm::normalize(glm::cross(front, glm::vec3(0.0f, 1.0f, 0.0f))) * 20.0f;
     }
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
     {
-        this->camera.position += -glm::normalize(glm::cross(this->camera.direction, glm::vec3(0.0f, 1.0f, 0.0f))) * 20.0f;
+        this->camera.position += -glm::normalize(glm::cross(front, glm::vec3(0.0f, 1.0f, 0.0f))) * 20.0f;
     }
 
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)

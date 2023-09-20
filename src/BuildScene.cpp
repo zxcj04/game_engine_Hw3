@@ -408,13 +408,30 @@ void BuildScene::setup_ball(unsigned int &vao_player, int &size)
     size = vertices.size() / 3;
 }
 
-void BuildScene::render_ball(Shader shader, unsigned int vao_ball, glm::vec3 position, float ball_radius, int size, CULLING culling)
+void BuildScene::render_ball(Shader shader, unsigned int texture_ball, unsigned int vao_ball, glm::vec3 position, glm::vec3 angle, float ball_radius, int size, CULLING culling)
 {
     glm::mat4 model = glm::mat4(1.0f);
+
+    glm::vec2 rotate_direction;
+
+    if(angle.z != 0)
+        rotate_direction.x = atan(angle.y / angle.z);
+    else
+        rotate_direction.x = 0;
+
+    if(glm::length(glm::vec2(angle.y, angle.z)) != 0)
+        rotate_direction.y = atan(angle.x / glm::length(glm::vec2(angle.y, angle.z)));
+    else
+        rotate_direction.y = 0;
+
+    // cout << "\t" << rotate_direction.x << " " << rotate_direction.y << endl;
 
     model = glm::mat4(1.0f);
 
     model = glm::translate(model, position);
+
+    model = glm::rotate(model, rotate_direction.y, glm::vec3(0, 1, 0));
+    model = glm::rotate(model, rotate_direction.x, glm::vec3(-1, 0, 0));
     model = glm::scale(model, glm::vec3(ball_radius, ball_radius, ball_radius));
 
     shader.set_uniform("model", model);
@@ -435,11 +452,117 @@ void BuildScene::render_ball(Shader shader, unsigned int vao_ball, glm::vec3 pos
             break;
     }
 
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture_ball);
+
+    shader.set_uniform("using_texture", 0);
+
     glBindVertexArray(vao_ball);
 
     glDrawArrays(GL_TRIANGLES, 0, size);
 
     shader.set_uniform("culling", -1);
+    glBindVertexArray(0);
+}
+
+void BuildScene::setup_cube(unsigned int &vao_cube, int &size)
+{
+    vector<float> vertices = {
+        // positions          // normals          // color           // texture coords
+        -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f, 0.5f,  0.0f,  0.0f,
+         1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f, 0.5f,  1.0f,  0.0f,
+         1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f, 0.5f,  1.0f,  1.0f,
+         1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f, 0.5f,  1.0f,  1.0f,
+        -1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f, 0.5f,  0.0f,  1.0f,
+        -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f, 0.5f,  0.0f,  0.0f,
+
+        -1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f, 1.0f,  0.0f,  0.0f,
+         1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f, 1.0f,  1.0f,  0.0f,
+         1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f, 1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f, 1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f, 1.0f,  0.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f, 1.0f,  0.0f,  0.0f,
+
+        -1.0f,  1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 0.5f, 0.0f, 0.0f,  0.0f,  0.0f,
+        -1.0f,  1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 0.5f, 0.0f, 0.0f,  1.0f,  0.0f,
+        -1.0f, -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 0.5f, 0.0f, 0.0f,  1.0f,  1.0f,
+        -1.0f, -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 0.5f, 0.0f, 0.0f,  1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 0.5f, 0.0f, 0.0f,  0.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 0.5f, 0.0f, 0.0f,  0.0f,  0.0f,
+
+         1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f, 0.0f,  0.0f,  0.0f,
+         1.0f,  1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f, 0.0f,  1.0f,  0.0f,
+         1.0f, -1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f, 0.0f,  1.0f,  1.0f,
+         1.0f, -1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f, 0.0f,  1.0f,  1.0f,
+         1.0f, -1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f, 0.0f,  0.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f, 0.0f,  0.0f,  0.0f,
+
+        -1.0f, -1.0f, -1.0f,  0.0f,  -1.0f,  0.0f, 0.0f, 0.5f, 0.0f,  0.0f,  1.0f,
+         1.0f, -1.0f, -1.0f,  0.0f,  -1.0f,  0.0f, 0.0f, 0.5f, 0.0f,  1.0f,  1.0f,
+         1.0f, -1.0f,  1.0f,  0.0f,  -1.0f,  0.0f, 0.0f, 0.5f, 0.0f,  1.0f,  0.0f,
+         1.0f, -1.0f,  1.0f,  0.0f,  -1.0f,  0.0f, 0.0f, 0.5f, 0.0f,  1.0f,  0.0f,
+        -1.0f, -1.0f,  1.0f,  0.0f,  -1.0f,  0.0f, 0.0f, 0.5f, 0.0f,  0.0f,  0.0f,
+        -1.0f, -1.0f, -1.0f,  0.0f,  -1.0f,  0.0f, 0.0f, 0.5f, 0.0f,  0.0f,  1.0f,
+
+        -1.0f,  1.0f, -1.0f,  0.0f,   1.0f,  0.0f, 0.0f, 1.0f, 0.0f,  0.0f,  1.0f,
+         1.0f,  1.0f, -1.0f,  0.0f,   1.0f,  0.0f, 0.0f, 1.0f, 0.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,  0.0f,   1.0f,  0.0f, 0.0f, 1.0f, 0.0f,  1.0f,  0.0f,
+         1.0f,  1.0f,  1.0f,  0.0f,   1.0f,  0.0f, 0.0f, 1.0f, 0.0f,  1.0f,  0.0f,
+        -1.0f,  1.0f,  1.0f,  0.0f,   1.0f,  0.0f, 0.0f, 1.0f, 0.0f,  0.0f,  0.0f,
+        -1.0f,  1.0f, -1.0f,  0.0f,   1.0f,  0.0f, 0.0f, 1.0f, 0.0f,  0.0f,  1.0f
+    };
+
+    unsigned int VBO;
+
+    glGenVertexArrays(1, &vao_cube);
+    glGenBuffers(1, &VBO);
+
+    glBindVertexArray(vao_cube);
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * vertices.size(), vertices.data(), GL_STATIC_DRAW);
+
+    // position attribute
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    // normal attribute
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    // texture coord attribute
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)(6 * sizeof(float)));
+    glEnableVertexAttribArray(2);
+    // texture coord attribute
+    glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)(9 * sizeof(float)));
+    glEnableVertexAttribArray(3);
+
+    // You can unbind the VAO afterwards so other VAO calls won't accidentally modify this VAO, but this rarely happens. Modifying other
+    // VAOs requires a call to glBindVertexArray anyways so we generally don't unbind VAOs (nor VBOs) when it's not directly necessary.
+    glBindVertexArray(0);
+
+    size = vertices.size() / 3;
+}
+
+void BuildScene::render_cube(Shader shader, unsigned int texture_cube, unsigned int vao_cube, glm::vec3 position, float length, float rotate, int size)
+{
+    glm::mat4 model = glm::mat4(1.0f);
+
+    model = glm::mat4(1.0f);
+
+    model = glm::translate(model, position);
+    model = glm::rotate(model, glm::radians(rotate), glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::scale(model, glm::vec3(length / 2, length / 2, length / 2));
+
+    shader.set_uniform("model", model);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture_cube);
+
+    shader.set_uniform("using_texture", 0);
+
+    glBindVertexArray(vao_cube);
+
+    glDrawArrays(GL_TRIANGLES, 0, size);
+
     glBindVertexArray(0);
 }
 

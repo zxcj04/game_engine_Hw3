@@ -44,16 +44,16 @@ else ifeq ($(findstring Microsoft, $(shell uname -a)), Microsoft)
 	mkdir = mkdir -p $(OBJ_DIR)
 
 	rm = rm -rf *.exe *.out imgui.ini $(OBJ_DIR) transfer_function.txt
-else ifeq ($(findstring Darwin, $(shell uname -a)), Darwin)
-	CXX = clang++
-	EXE = main
+# else ifeq ($(findstring Darwin, $(shell uname -a)), Darwin)
+# 	CXX = clang++
+# 	EXE = main
 
-	LIBS += -stdlib=libc++ -lglfw -framework Cocoa -framework OpenGL -framework IOKit -framework CoreVideo -framework Carbon
-	#CXXFLAGS += -DGLFW_MINOR_VERSION
-	mkdir = mkdir -p $(OBJ_DIR)
+# 	LIBS += -stdlib=libc++ -lglfw -framework Cocoa -framework OpenGL -framework IOKit -framework CoreVideo -framework Carbon
+# 	#CXXFLAGS += -DGLFW_MINOR_VERSION
+# 	mkdir = mkdir -p $(OBJ_DIR)
 
-	rm = rm *.exe *.out imgui.ini
-	rm = rm -rf $(OBJ_DIR)
+# 	rm = rm *.exe *.out imgui.ini
+# 	rm = rm -rf $(OBJ_DIR)
 else
 	LIBS += $(shell pkg-config --static --libs glfw3)
 

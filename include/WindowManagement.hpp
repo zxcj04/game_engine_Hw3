@@ -98,14 +98,14 @@ class WindowManagement
         float boundary_size;
 
         unsigned int texture_wood;
+        unsigned int texture_ball;
+        unsigned int texture_cube;
 
         glm::vec3 light_color;
 
         bool enable_cursor;
 
         float decay;
-
-        bool cool;
 
         bool spatial_partition;
 

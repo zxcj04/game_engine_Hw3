@@ -29,7 +29,10 @@ class BuildScene
         static void render_player(SCENE, unsigned int, Shader, glm::vec3);
 
         static void setup_ball(unsigned int &, int &);
-        static void render_ball(Shader, unsigned int, glm::vec3, float, int, CULLING);
+        static void render_ball(Shader, unsigned int, unsigned int, glm::vec3, glm::vec3, float, int, CULLING);
+
+        static void setup_cube(unsigned int &, int &);
+        static void render_cube(Shader, unsigned int, unsigned int, glm::vec3, float, float, int);
 
         static void setup_view_volume(unsigned int &);
         static void render_view_volume(SCENE, unsigned int, Shader, glm::vec3, float, float, float, float);

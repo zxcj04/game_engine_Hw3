@@ -1,6 +1,25 @@
 #include <BallsHandler.hpp>
 
-BallsHandler::BallsHandler()
+bool to_near_to_another_cube(vector<Cube> cubes, glm::vec3 position, float length)
+{
+    bool ret = false;
+
+    for(auto cube: cubes)
+    {
+        if(cube.number == Cube::count)
+            continue;
+
+        if(glm::length(cube.position - position) < (cube.length / 2 + length / 2) * sqrt(2))
+        {
+            ret = true;
+            break;
+        }
+    }
+
+    return ret;
+}
+
+BallsHandler::BallsHandler(float boundary_size)
 {
     random_device rd;
 
@@ -8,7 +27,13 @@ BallsHandler::BallsHandler()
 
     gap = 500;
 
-    regular_grid = vector<vector<vector<set<int>>>>(2000/gap + 2, vector<vector<set<int>>>(2000/gap + 2, vector<set<int>>(2000/gap + 2, set<int>())));
+    regular_grid = vector<vector<vector<set<int>>>>(boundary_size/gap + 2, vector<vector<set<int>>>(boundary_size/gap + 2, vector<set<int>>(boundary_size/gap + 2, set<int>())));
+    cube_regular_grid = vector<vector<vector<set<int>>>>(boundary_size/gap + 2, vector<vector<set<int>>>(boundary_size/gap + 2, vector<set<int>>(boundary_size/gap + 2, set<int>())));
+
+    for(int i = 0 ; i < 5 ; i++)
+    {
+        add_cube(boundary_size);
+    }
 }
 
 BallsHandler::~BallsHandler()
@@ -51,13 +76,38 @@ void BallsHandler::add_ball(float boundary_size)
     add_ball(boundary_size, position, radius, speed);
 }
 
-void BallsHandler::draw_balls(Shader shader, glm::vec3 player_position, float yaw, float pitch, float near, float far)
+void BallsHandler::add_cube(float boundary_size)
 {
-    for(auto & ball: _balls)
-        ball.draw(shader, player_position, yaw, pitch, near, far);
+    uniform_real_distribution<float> unif_cube_length(250, 500);
+    uniform_real_distribution<float> unif_cube_position(-boundary_size / 2, boundary_size / 2);
+    uniform_real_distribution<float> unif_cube_rotate(0, 360);
+
+    float length = unif_cube_length(rd_generator);
+    float rotate = unif_cube_rotate(rd_generator);
+    glm::vec3 position;
+
+    do
+    {
+        position.x = unif_cube_position(rd_generator);
+        position.y = -boundary_size / 2 + length / 2;
+        position.z = unif_cube_position(rd_generator);
+
+    } while (abs(position.x) + length / 2 * sqrt(2) >= 1000 ||
+                abs(position.z) + length / 2 * sqrt(2) >= 1000 ||
+                to_near_to_another_cube(_cubes, position, length));
+
+    Cube cube = Cube(position, length, rotate);
+
+    _cubes.push_back(cube);
 }
 
-void BallsHandler::move_balls(bool cool, float decay, bool spatial_partition)
+void BallsHandler::draw_balls(Shader shader, unsigned int texture_ball, glm::vec3 player_position, float yaw, float pitch, float near, float far)
+{
+    for(auto & ball: _balls)
+        ball.draw(shader, texture_ball, player_position, yaw, pitch, near, far);
+}
+
+void BallsHandler::move_balls(float decay, bool spatial_partition)
 {
     if(spatial_partition)
     {
@@ -78,6 +128,16 @@ void BallsHandler::move_balls(bool cool, float decay, bool spatial_partition)
                     _balls[one].check_ball_collision(_balls[two], decay);
                 }
             }
+
+            for(int i2 = i - 1; i2 <= i + 1; i2++)
+            for(int j2 = j - 1; j2 <= j + 1; j2++)
+            for(int k2 = k - 1; k2 <= k + 1; k2++)
+            {
+                for(auto two: cube_regular_grid[i2][j2][k2])
+                {
+                    _balls[one].check_cube_collision(_cubes[two], decay);
+                }
+            }
         }
 
     }
@@ -88,6 +148,12 @@ void BallsHandler::move_balls(bool cool, float decay, bool spatial_partition)
             {
                 _balls[i].check_ball_collision(_balls[j], decay);
             }
+
+        for(int i = 0; i < _balls.size(); i++)
+            for(int j = 0; j < _cubes.size() ; j++)
+            {
+                _balls[i].check_cube_collision(_cubes[j], decay);
+            }
     }
 
     for(auto & ball: _balls)
@@ -95,7 +161,15 @@ void BallsHandler::move_balls(bool cool, float decay, bool spatial_partition)
         if(spatial_partition)
             ball.update_regular_grid(regular_grid, gap);
 
-        ball.move(_balls, cool, decay);
+        ball.move(_balls, decay);
+    }
+
+    for(auto & cube: _cubes)
+    {
+        if(spatial_partition)
+            cube.update_regular_grid(cube_regular_grid, gap);
+
+        // cube.move(cube, decay);
     }
 }
 
@@ -111,4 +185,29 @@ void BallsHandler::reset_balls()
     }
 
     Ball::count = 0;
+}
+
+void BallsHandler::reset_cubes(float boundary_size)
+{
+    _cubes.clear();
+
+    for(int i = 0; i <= 2000 / gap + 1; i++)
+    for(int j = 0; j <= 2000 / gap + 1; j++)
+    for(int k = 0; k <= 2000 / gap + 1; k++)
+    {
+        cube_regular_grid[i][j][k].clear();
+    }
+
+    Cube::count = 0;
+
+    for(int i = 0 ; i < 5 ; i++)
+    {
+        add_cube(boundary_size);
+    }
+}
+
+void BallsHandler::draw_cubes(Shader shader, unsigned int texture_cube)
+{
+    for(auto & cube: _cubes)
+        cube.draw(shader, texture_cube);
 }
